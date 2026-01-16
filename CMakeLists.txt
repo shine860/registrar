@@ -12,8 +12,6 @@ project(registrar LANGUAGES CXX)
 add_executable(registrar
     #math.cpp                              # 模块实现单元
     main.cpp
-
-
 )
 
 set(CONTROL_FILES
@@ -25,7 +23,13 @@ set(DOMAIN_FILES
     #${MODULE_LIB_DIR1}/utils.cppm         #添加模块库的模块接口单元
     #math.cppm                             # 模块接口单元
     classroom.cppm
-
+    course.cppm
+    enrollment.cppm
+    grade.cppm
+    person.cppm
+    student.cppm
+    teacher.cppm
+    teachingsecretary.cppm
 )
 set(UI_FILES
     #${MODULE_LIB_DIR1}/utils.cppm         #添加模块库的模块接口单元
