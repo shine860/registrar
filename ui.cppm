@@ -3,6 +3,7 @@
 // Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-17 16:00:42
 // Description:
 //
+
 export module ui.ui;
 import domain.student;
 import domain.teacher;
