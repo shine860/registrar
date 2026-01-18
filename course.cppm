@@ -1,0 +1,41 @@
+//
+// File: course.cppm
+// Created: 刘城2024051604051 3214528114@qq.com      2026-01-16
+// Version: 1.0      License: AGPLv3
+export module domain.course;
+import std;
+using std::print;
+using std::string;
+using std::vector;
+
+export class Course
+{
+private:
+    string name;
+    string id;
+    double credit;
+    string syllabus;
+    vector<string> enrolledStudents;
+
+public:
+    Course(string name, string id, double credit, string syllabus);
+    bool acceptEnrollment(const string& studentId);
+    string roster() const;
+};
+
+Course::Course(string name, string id, double credit, string syllabus)
+    : name(std::move(name)), id(std::move(id)), credit(credit), syllabus(std::move(syllabus)) {}
+
+bool Course::acceptEnrollment(const string& studentId)
+{
+    this->enrolledStudents.push_back(studentId);
+    return true;
+}
+
+string Course::roster() const
+{
+    string result = "Enrolled Students: ";
+    for (const auto& sid : this->enrolledStudents)
+        result += sid + ", ";
+    return result.empty() ? "No students enrolled" : result;
+}
