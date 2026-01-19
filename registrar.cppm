@@ -7,9 +7,7 @@ export module control.registrar;
 import domain.student;
 import domain.course;
 import domain.enrollment;
-import dm.studentbroker;
-import dm.coursebroker;
-import dm.enrollbroker;
+
 import std;
 using std::string;
 using std::vector;

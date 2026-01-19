@@ -12,6 +12,7 @@ project(registrar LANGUAGES CXX)
 add_executable(registrar
     #math.cpp                              # 模块实现单元
     main.cpp
+
 )
 
 set(CONTROL_FILES
@@ -41,6 +42,13 @@ set(DM_FILES
     #${MODULE_LIB_DIR1}/utils.cppm         #添加模块库的模块接口单元
     #math.cppm
     classroombroker.cppm
+    coursebroker.cppm
+    dm.cppm
+    enrollbroker.cppm
+    relationalbroker.cppm
+    studentbroker.cppm
+    teacherbroker.cppm
+    teachsecretary.cppm
 )
 source_group("control" FILES ${CONTROL_FILES})
 source_group("domain" FILES ${DOMAIN_FILES})
@@ -54,20 +62,17 @@ target_sources(registrar  PRIVATE FILE_SET cxx_modules TYPE CXX_MODULES
 )
 target_compile_features(registrar PRIVATE cxx_std_23)
 
-target_include_directories(registrar
-    PRIVATE
-        /usr/include/postgresql
-        /usr/include/pqxx
+
+target_include_directories(registrar PRIVATE
+    /usr/local/include)
+
+target_link_directories(registrar PRIVATE
+    /usr/local/lib)
+
+target_link_libraries(registrar PRIVATE
+    pqxx
+    pq
 )
-
-target_link_libraries(registrar
-    PRIVATE
-        pqxx
-        pq
-        pthread
-)
-
-
 
 
 
