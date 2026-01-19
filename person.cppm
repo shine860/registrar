@@ -4,39 +4,23 @@
 // Version: 1.0      License: AGPLv3
 export module domain.person;
 import std;
-using std::print;
 using std::string;
 
 export class Person
 {
-private:
-    string id;
-    string name;
-    string gender;
-
+protected:
+    string m_id;
+    string m_name;
+    string m_gender;
 public:
     Person(string id, string name, string gender);
-    virtual ~Person() = default;
-    void showInfo() const;
-    virtual bool authenticate(const std::string& password) = 0;
-    bool isIdMatch(const string& targetId) const;
-    bool isNameMatch(const string& targetName) const;
+    string info() const;
 };
 
 Person::Person(string id, string name, string gender)
-    : id(std::move(id)), name(std::move(name)), gender(std::move(gender)) {}
+    : m_id(std::move(id)), m_name(std::move(name)), m_gender(std::move(gender)) {}
 
-void Person::showInfo() const
+string Person::info() const
 {
-    print("ID: {}, Name: {}, Gender: {}", this->id, this->name, this->gender);
-}
-
-bool Person::isIdMatch(const string& targetId) const
-{
-    return this->id == targetId;
-}
-
-bool Person::isNameMatch(const string& targetName) const
-{
-    return this->name == targetName;
+    return "ID: " + this->m_id + ", 姓名: " + this->m_name;
 }

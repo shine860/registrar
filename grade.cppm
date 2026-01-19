@@ -4,31 +4,30 @@
 // Version: 1.0      License: AGPLv3
 export module domain.grade;
 import std;
-using std::print;
 using std::vector;
 
 export class Grade
 {
 private:
-    double midterm;
-    double final;
-    vector<double> homework;
-
+    double m_midterm;
+    double m_final;
+    vector<double> _homework;
 public:
     Grade(double midterm, double final, vector<double> homework);
     double score() const;
 };
 
 Grade::Grade(double midterm, double final, vector<double> homework)
-    : midterm(midterm), final(final), homework(std::move(homework)) {}
+    : m_midterm(midterm), m_final(final), _homework(std::move(homework)) {}
 
 double Grade::score() const
 {
     double hwAvg = 0.0;
-    if (!this->homework.empty()) {
-        for (double hw : this->homework)
+    if (!this->_homework.empty())
+    {
+        for (double hw : this->_homework)
             hwAvg += hw;
-        hwAvg /= this->homework.size();
+        hwAvg /= this->_homework.size();
     }
-    return 0.3 * this->midterm + 0.5 * this->final + 0.2 * hwAvg;
+    return 0.3 * this->m_midterm + 0.5 * this->m_final + 0.2 * hwAvg;
 }

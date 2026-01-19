@@ -8,47 +8,48 @@ using std::print;
 using std::string;
 using std::vector;
 
+class Course;
+
 export class Classroom
 {
-private:
-    string roomNum;
-    int capacity;
-    bool isOccupied;
-    vector<string> courseSchedule;
-
+protected:
+    string m_roomNum;
+    int m_capacity;
+    bool m_isOccupied;
+    vector<Course*> _courseSchedule;
 public:
     Classroom(string roomNum, int capacity);
-    bool checkAvailability(const string& timeSlot) const;
+    bool checkAvailability();
     bool occupyClassroom(const string& timeSlot, const string& courseId);
-    bool releaseClassroom(const string& timeSlot);
-    void showClassroomInfo() const;
+    bool releaseClassroom();
+    void showClassroomInfo();
 };
 
 Classroom::Classroom(string roomNum, int capacity)
-    : roomNum(std::move(roomNum)), capacity(capacity), isOccupied(false) {}
+    : m_roomNum(std::move(roomNum)), m_capacity(capacity), m_isOccupied(false) {}
 
-bool Classroom::checkAvailability(const string& timeSlot) const
+bool Classroom::checkAvailability()
 {
-    return !this->isOccupied;
+    return !this->m_isOccupied;
 }
 
 bool Classroom::occupyClassroom(const string& timeSlot, const string& courseId)
 {
-    if (this->isOccupied) return false;
-    this->isOccupied = true;
-    this->courseSchedule.push_back(timeSlot + ": " + courseId);
+    if (this->m_isOccupied) return false;
+    this->m_isOccupied = true;
+    print("教室{}已占用", this->m_roomNum);
     return true;
 }
 
-bool Classroom::releaseClassroom(const string& timeSlot)
+bool Classroom::releaseClassroom()
 {
-    if (!this->isOccupied) return false;
-    this->isOccupied = false;
+    if (!this->m_isOccupied) return false;
+    this->m_isOccupied = false;
+    print("教室{}已释放", this->m_roomNum);
     return true;
 }
 
-void Classroom::showClassroomInfo() const
+void Classroom::showClassroomInfo()
 {
-    print("Room: {}, Capacity: {}, Occupied: {}", this->roomNum, this->capacity, this->isOccupied);
+    print("教室编号：{}，容量：{}，状态：{}", this->m_roomNum, this->m_capacity, this->m_isOccupied ? "已占用" : "空闲");
 }
-
