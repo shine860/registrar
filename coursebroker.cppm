@@ -1,5 +1,36 @@
-#include "coursebroker.h"
-#include <iostream>
+module;
+#include "pqxx/pqxx"
+export module registrar:dm.coursebroker;
+import std;
+import :dm.base;
+import registrar:domain.course;
+
+export class CourseBroker : public RelationalBroker {
+public:
+    static CourseBroker& singleton();
+    std::shared_ptr<Course> findById(const std::string& cno);
+    bool addCourse(const std::shared_ptr<Course>& course);
+    bool deleteCourse(const std::string& cno);
+
+    void createTable() override;
+    void initData() override;
+    //添加先修课
+    bool addPrecourse(const std::string& courseId,const std::string& preCourseId);
+    //移除课程的某个先修课
+    bool removePrecourse(const std::string& courseId,const std::string& preCourseI);
+    // 获取课程的所有先修课
+    std::vector<std::shared_ptr<Course>> getPrerequisites(const std::string& courseId);
+    // 校验学生是否满足该课程的先修课条件（选课前置检查）
+    bool checkPrerequisiteForStudent(const std::string& studentId, const std::string& courseId);
+    bool updateCourseTeacher(const std::string& courseId, const std::string& newTeacherId);
+private:
+    CourseBroker();
+    CourseBroker(const CourseBroker&) = delete;
+    CourseBroker& operator=(const CourseBroker&) = delete;
+    std::vector<std::shared_ptr<Course>> _courses;
+    bool isCourseExits(const string &cid);
+};
+
 
 CourseBroker::CourseBroker()
 {
@@ -56,7 +87,7 @@ void CourseBroker::initData() {
     addPrerequisite("1002", "1001");  // 数据结构 → C++程序设计
     addPrerequisite("1003", "1002");  // 操作系统 → 数据结构
 
-    // 可选：手动将测试数据加入缓存（和StudentBroker保持一致）
+
     _courses.clear();
     for (auto& cou : testCourses) {
         auto coursePtr = std::make_shared<Course>(cou);
@@ -72,7 +103,7 @@ void CourseBroker::initData() {
 }
 
 bool CourseBroker::isCourseExists(const std::string& cid) {
-    // 1. 先查轻量缓存
+
     for (auto& cou : _courses) {
         if (cou->hasId(cid)) {
             return true;
@@ -82,7 +113,7 @@ bool CourseBroker::isCourseExists(const std::string& cid) {
 
 
 std::shared_ptr<Course> CourseBroker::findById(const std::string& cid) {
-        // 1. 先查缓存
+
         for (auto& cou : _courses) {
             if (cou->hasId(cid)) {
                 std::print("查询到课程：{}\n", cid);
@@ -90,7 +121,7 @@ std::shared_ptr<Course> CourseBroker::findById(const std::string& cid) {
             }
         }
 
-        // 2. 缓存未命中，查数据库
+
         std::print("[缓存未命中] 去数据库查询课程：{}\n", cid);
         pqxx::work tx(*m_conn);
         pqxx::result res = tx.exec_params(
@@ -102,7 +133,7 @@ std::shared_ptr<Course> CourseBroker::findById(const std::string& cid) {
             return nullptr;
         }
 
-        // 3. 封装课程对象
+
         auto row = res[0];
         auto course = std::make_shared<Course>(
                     row["id"].as<std::string>(),
@@ -110,22 +141,22 @@ std::shared_ptr<Course> CourseBroker::findById(const std::string& cid) {
                     row["credit"].as<double>(),
                     row["teacher_id"].as<std::string>()
                     );
-        // 4. 加载先修课ID到对象
+
         auto pres = getPrerequisites(cid);
         for (auto& pre : pres) {
             course->addPrerequisiteId(pre->m_id);
         }
 
-        // 5. 加入缓存
+
         _courses.push_back(course);
         return course;
 }
 bool CourseBroker::isCourseExists(const std::string& cid) {
-    // 1. 查缓存
+
     for (auto& cou : _courses) {
         if (cou->hasId(cid)) return true;
     }
-    // 2. 查数据库
+
     pqxx::work tx(*m_conn);
     auto res = tx.exec_params("SELECT 1 FROM Course WHERE id = $1;", cid);
     tx.commit();
@@ -158,13 +189,13 @@ bool CourseBroker::addCourse(const Course& course) {
     }
 }
 bool CourseBroker::deleteCourse(const std::string& cid) {
-    // 1. 校验课程存在
+
     if (!isCourseExists(cid)) {
         std::print("课程 {} 不存在，删除失败\n", cid);
         return false;
     }
 
-    // 2. 校验是否有选课记录（教学秘书不能删除已选课程）
+
     pqxx::work txCheck(*m_conn);
     auto res = txCheck.exec_params("SELECT 1 FROM Enrollment WHERE course_id = $1;", cid);
     txCheck.commit();
@@ -173,7 +204,7 @@ bool CourseBroker::deleteCourse(const std::string& cid) {
         return false;
     }
 
-    // 3. 删除课程（先修课关联表级联删除）
+
     try {
         pqxx::work tx(*m_conn);
         tx.exec_params("DELETE FROM Course WHERE id = $1;", cid);
@@ -264,7 +295,6 @@ bool CourseBroker::addPrerequisite(const std::string& courseId, const std::strin
         return false;
     }
 
-    // 插入关联
     try {
         pqxx::work tx(*m_conn);
         tx.exec_params(
@@ -272,7 +302,7 @@ bool CourseBroker::addPrerequisite(const std::string& courseId, const std::strin
             courseId, preCourseId
         );
         tx.commit();
-        // 更新缓存
+
         for (auto& cou : _courses) {
             if (cou->hasId(courseId)) {
                 cou->addPrerequisiteId(preCourseId);

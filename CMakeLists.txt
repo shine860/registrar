@@ -12,13 +12,7 @@ project(registrar LANGUAGES CXX)
 add_executable(registrar
     #math.cpp                              # 模块实现单元
     main.cpp
-    studentbroker.h studentbroker.cpp
-    coursebroker.h coursebroker.cpp
-    classroombroker.h classroombroker.cpp
-    enrollbroker.h enrollbroker.cpp
-    relationalbroker.h relationalbroker.cpp
-    teacherbroker.h teacherbroker.cpp
-    teachsecretary.h teachsecretary.cpp
+
 )
 
 set(CONTROL_FILES
@@ -44,38 +38,41 @@ set(UI_FILES
     ui.cppm
 )
 
-# set(DM_FILES
-#     #${MODULE_LIB_DIR1}/utils.cppm         #添加模块库的模块接口单元
-#     #math.cppm
-#     classroombroker.cppm
-# )
+set(DM_FILES
+    #${MODULE_LIB_DIR1}/utils.cppm         #添加模块库的模块接口单元
+    #math.cppm
+    classroombroker.cppm
+    coursebroker.cppm
+    dm.cppm
+    enrollbroker.cppm
+    relationalbroker.cppm
+    studentbroker.cppm
+    teacherbroker.cppm
+    teachsecretary.cppm
+)
 source_group("control" FILES ${CONTROL_FILES})
 source_group("domain" FILES ${DOMAIN_FILES})
 source_group("ui" FILES ${UI_FILES})
-# source_group("dm" FILES ${DM_FILES})
+source_group("dm" FILES ${DM_FILES})
 target_sources(registrar  PRIVATE FILE_SET cxx_modules TYPE CXX_MODULES
     BASE_DIRS                              # 配置BASE_DIRS，用于组织构建输出目录，以便构建不同目录中(同名的)模块文件.
         #${MODULE_LIB_DIR1}
         ${CMAKE_CURRENT_SOURCE_DIR}
-    FILES ${CONTROL_FILES} ${DOMAIN_FILES} ${UI_FILES} #${DM_FILES}
+    FILES ${CONTROL_FILES} ${DOMAIN_FILES} ${UI_FILES} ${DM_FILES}
 )
 target_compile_features(registrar PRIVATE cxx_std_23)
 
-# target_include_directories(registrar
-#     PRIVATE
-#         /usr/include/postgresql
-#         /usr/include/pqxx
-# )
 
-# target_link_libraries(registrar PRIVATE
-#         pqxx
-#         pq
-# )
-target_include_directories(registrar PRIVATE $
-    {PQXX_INCLUDE_DIRS})
-target_link_libraries(registrar PRIVATE ${PQXX_LIBRARIES})
+target_include_directories(registrar PRIVATE
+    /usr/local/include)
 
+target_link_directories(registrar PRIVATE
+    /usr/local/lib)
 
+target_link_libraries(registrar PRIVATE
+    pqxx
+    pq
+)
 
 
 

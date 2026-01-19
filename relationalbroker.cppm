@@ -1,5 +1,30 @@
-#include "relationalbroker.h"
-#include <pqxx/pqxx>
+module;
+#include "pqxx/pqxx"
+export module registrar:dm.base;
+
+import std;
+using std::string;
+using std::print;
+
+export class RelationalBroker{
+public:
+public:
+    RelationalBroker();
+    virtual ~RelationalBroker() = default;
+
+    virtual void initConnection();
+    virtual pqxx::result query(const string& sql);
+    virtual bool insert(const string& table, const vector<string>& cols, const vector<string>& vals);
+    virtual bool drop(const string& table, const string& primary_key, const string& key_value);
+
+    virtual void createTable() = 0;
+    virtual void initData() = 0;
+
+protected:
+    static unique_ptr<pqxx::connection> m_conn;
+
+};
+
 unique_ptr<pqxx::connection> RelationalBroker::m_conn = nullptr;
 
 RelationalBroker::RelationalBroker() {}
@@ -11,7 +36,6 @@ void RelationalBroker::initConnection() {
     }
 
     try {
-        // 数据库连接配置（老师只需修改这里）
         const string conn_str = "dbname=EnrollSys "
                                 "user=enrolluser "
                                 "password=123456 "
@@ -49,11 +73,11 @@ bool RelationalBroker::insert(const string& table, const vector<string>& cols, c
     }
 
     string sql = "INSERT INTO " + table + " (";
-    // 拼接字段名
+
     for (size_t i = 0; i < cols.size(); ++i) {
         sql += cols[i] + (i < cols.size()-1 ? ", " : ") VALUES (");
     }
-    // 拼接值
+
     for (size_t i = 0; i < vals.size(); ++i) {
         sql += "'" + vals[i] + "'" + (i < vals.size()-1 ? ", " : ") ON CONFLICT DO NOTHING;");
     }
