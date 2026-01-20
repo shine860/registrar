@@ -30,6 +30,7 @@ set(DOMAIN_FILES
     student.cppm
     teacher.cppm
     teachingsecretary.cppm
+    domain.cppm
 )
 set(UI_FILES
     #${MODULE_LIB_DIR1}/utils.cppm         #添加模块库的模块接口单元
