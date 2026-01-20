@@ -91,7 +91,7 @@ bool EnrollInUi::teachingsecretaryLogIn()
     print("请输入姓名: ");
     std::cin >> name;
 
-   std::shared_ptr<TeachingSecretaryBroker> secretary =TeachingSecretaryBroker::singleton().findById(id);
+   std::shared_ptr<TeachingSecretary> secretary =TeachingSecretaryBroker::singleton().findById(id);
 
     if (secretary) {
         print("登录成功！欢迎，教务 {}\n", id);

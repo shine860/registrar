@@ -13,6 +13,7 @@ add_executable(registrar
     #math.cpp                              # 模块实现单元
     main.cpp
 
+
 )
 
 set(CONTROL_FILES
@@ -25,6 +26,7 @@ set(DOMAIN_FILES
     #math.cppm                             # 模块接口单元
     classroom.cppm
     course.cppm
+    domain.cppm
     enrollment.cppm
     grade.cppm
     person.cppm
