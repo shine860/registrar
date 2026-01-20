@@ -1,5 +1,5 @@
-import std;
 import registrar;
+import std;
 int main()
 {
     Registrar system;

@@ -2,33 +2,49 @@
 // File: grade.cppm
 // Created: 刘城2024051604051 3214528114@qq.com      2026-01-16
 // Version: 1.0      License: AGPLv3
-export module domain.grade;
+export module registrar:domain.grade;
 import std;
 using std::print;
 using std::vector;
+using std::string;
+using std::domain_error;
+using std::ranges::stable_sort;
 
 export class Grade
 {
 private:
-    double midterm;
-    double final;
+    double m_midterm;
+    double m_final;
     vector<double> homework;
-
+    class Enrollment *m_enrollment;
 public:
-    Grade(double midterm, double final, vector<double> homework);
-    double score() const;
+    Grade(double midterm, double final, vector<double> hw);
+    double score();
+    double median();
 };
 
-Grade::Grade(double midterm, double final, vector<double> homework)
-    : midterm(midterm), final(final), homework(std::move(homework)) {}
+Grade::Grade(double midterm, double final, vector<double> hw)
+    : m_midterm(midterm), m_final(final), homework(hw)
+{}
 
-double Grade::score() const
+double Grade::median()
 {
-    double hwAvg = 0.0;
-    if (!this->homework.empty()) {
-        for (double hw : this->homework)
-            hwAvg += hw;
-        hwAvg /= this->homework.size();
-    }
-    return 0.3 * this->midterm + 0.5 * this->final + 0.2 * hwAvg;
+    auto size = homework.size();
+    if (size == 0)
+        throw domain_error("empty vec.");
+
+    stable_sort(homework);
+
+    auto mid = size / 2;
+    if (size % 2 == 0){
+        return (homework[mid] + homework[mid - 1]) / 2;
+
+    }else{
+      return  homework[mid];
+
+        }
+
+}
+double Grade::score(){
+    return 0.2*m_midterm+0.4*m_final+0.4*median();
 }

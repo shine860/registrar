@@ -4,22 +4,17 @@ export module registrar:dm.teacherbroker;
 
 import std;
 import :dm.base;
-import registrar:domian.teacher;
-
+import :domain.teacher;
+using std::exception;
 export class TeacherBroker : public RelationalBroker {
+friend class TeachingSecretaryBroker;
 public:
     static TeacherBroker& singleton();
     void createTable() override;
     void initData() override;
     std::shared_ptr<Teacher> findById(const string &tid);
-
-    bool addTeacher(class Teacher& teacher);
-    bool deleteTeacher(const string& id);
-
-    std::vector<std::string> getTaughtCourses(const std::string& tid);
-    std::vector<std::shared_ptr<Teacher>> findByDepartment(const std::string& dept);
-
     bool isTeacherExists(const std::string& tid);
+    std::vector<std::shared_ptr<Teacher>> findAll();
 private:
     TeacherBroker();
     TeacherBroker(const TeacherBroker&) = delete;
@@ -41,11 +36,11 @@ void TeacherBroker::createTable() {
     std::print("创建教师表（Teacher）...\n");
 
     std::string sql = "CREATE TABLE IF NOT EXISTS Teacher("
-                      "id VARCHAR(20) PRIMARY KEY,"          // 教师ID（主键，唯一）
+                      "id VARCHAR(20) PRIMARY KEY,"          // 教师工号
                       "name VARCHAR(50) NOT NULL,"
                        "gender VARCHAR(8) NOT NULL,"
-                      "department VARCHAR(50) NOT NULL,"     // 院系（非空）
-                      "title VARCHAR(20) NOT NULL);";        // 职称（非空）
+                      "department VARCHAR(50) NOT NULL,"     // 院系
+                      "title VARCHAR(20) NOT NULL);";        // 职称
     try {
         query(sql);
         std::print("教师表创建成功\n");
@@ -56,7 +51,7 @@ void TeacherBroker::createTable() {
 }
 
 void TeacherBroker::initData() {
-
+    query("DELELE FROM Teacher;");
     _teachers.clear();
 
     std::print("初始化教师测试数据...\n");
@@ -67,147 +62,61 @@ void TeacherBroker::initData() {
         {"2003", "王五", "女","电子工程学院", "讲师"},
         {"2004", "赵六", "女","数学学院", "教授"}
     };
-
-    int successCount = 0;
-    for (const auto& tea : testTeachers) {
-        if (addTeacher(tea)) {
-            successCount++;
+    try {
+        pqxx::work tx(*m_conn);
+        for(auto& t : testTeachers) {
+            tx.exec("INSERT INTO Teacher(id, name, gender, dept, title) VALUES($1, $2, $3, $4, $5)",
+                           pqxx::params{t.m_id, t.m_name, t.m_gender, t.m_dept, t.m_title});
+        tx.commit();
+        for(auto& t : testTeachers) _teachers.push_back(std::make_shared<Teacher>(t));
         }
+    } catch(const std::exception& e) {
+        std::cerr << "初始化教师表失败：" << e.what() << std::endl;
     }
-
-
-    _teachers.clear();
-    for (const auto& tea : testTeachers) {
-        _teachers.push_back(std::make_shared<Teacher>(tea));
-    }
-
-    std::print("教师数据初始化完成，成功录入 {} 条记录\n", successCount);
 }
-
-
 std::shared_ptr<Teacher> TeacherBroker::findById(const std::string& tid) {
-
-    for (const auto& tea : _teachers) {
-        if (tea->hasId(tid)) {
-            std::print("[缓存命中] 查询教师：{}（ID：{}）\n", tea->m_name, tid);
-            return tea;
-        }
-    }
-
-
-    std::print("[缓存未命中] 数据库查询教师：{}\n", tid);
+    for(auto& t : _teachers) if(t->hasId(tid)) return t;
     try {
         pqxx::work tx(*m_conn);
-        auto res = tx.exec_params(
-                    "SELECT id, name,gender, department, title FROM Teacher WHERE id = $1;",tid);
+        auto res = tx.exec("SELECT * FROM Teacher WHERE id=$1", pqxx::params{tid});
         tx.commit();
-
-        if (res.empty()) {
-            std::cerr << "教师ID " << tid << " 不存在\n";
-            return nullptr;
+        if(!res.empty()) {
+            auto r = res[0];
+            auto t = std::make_shared<Teacher>(
+                        r["id"].as<std::string>(), r["name"].as<std::string>(),
+                        r["gender"].as<std::string>(), r["dept"].as<std::string>(),
+                        r["title"].as<std::string>()
+                        );
+            _teachers.push_back(t);
+            return t;
         }
-
-
-        auto row = res[0];
-        auto teacher = std::make_shared<Teacher>(
-                    row["id"].as<std::string>(),
-                    row["name"].as<std::string>(),
-                    row["gender"].as<std::string>(),
-                    row["department"].as<std::string>(),
-                    row["title"].as<std::string>()
-                    );
-        // 加入缓存
-        _teachers.push_back(teacher);
-        return teacher;
-    } catch (const std::exception& e) {
-        std::cerr << "查询教师失败：" << e.what() << std::endl;
-        return nullptr;
+    } catch(const std::exception& e) {
+        std::cerr << "未找到：" << e.what() << std::endl;
     }
+    return nullptr;
 }
 
-bool TeacherBroker::addTeacher(const Teacher& teacher) {
 
-    if (isTeacherExistsInternal(teacher.m_id)) {
-        std::print("教师ID {} 已存在，新增失败\n", teacher.m_id);
-        return false;
-    }
-
-
-    if (teacher.m_name.empty() || teacher.m_department.empty() || teacher.m_title.empty()) {
-        std::print("教师姓名/院系/职称不能为空，新增失败（ID：{}）\n", teacher.m_id);
-        return false;
-    }
-
-
-    try {
-        pqxx::work tx(*m_conn);
-        tx.exec_params(
-            "INSERT INTO Teacher(id, name, department, title) VALUES ($1, $2, $3, $4);",
-            teacher.m_id, teacher.m_name, teacher.m_department, teacher.m_title
-        );
-        tx.commit();
-
-
-        _teachers.push_back(std::make_shared<Teacher>(teacher));
-        std::print("新增教师成功：{}（ID：{}，院系：{}）\n", teacher.m_name, teacher.m_id, teacher.m_department);
-        return true;
-    } catch (const std::exception& e) {
-        std::cerr << "新增教师失败（ID：" << teacher.m_id << "）：" << e.what() << std::endl;
-        return false;
-    }
+bool TeacherBroker::isTeacherExists(const std::string& tid) {
+   return findById(tid)!=nullptr;
 }
-
-// 删除教师（校验授课记录）
-bool TeacherBroker::deleteTeacher(const std::string& tid) {
-    if (!isTeacherExistsInternal(tid)) {
-        std::print("教师ID {} 不存在，删除失败\n", tid);
-        return false;
-    }
-
-    try {
-        pqxx::work txCheck(*m_conn);
-        auto res = txCheck.exec_params("SELECT 1 FROM Course WHERE teacher_id = $1;", tid);
-        txCheck.commit();
-        if (!res.empty()) {
-            std::print("教师ID {} 有授课记录，禁止删除\n", tid);
-            return false;
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "校验教师授课记录失败：" << e.what() << std::endl;
-        return false;
-    }
-
-    try {
-        pqxx::work tx(*m_conn);
-        tx.exec_params("DELETE FROM Teacher WHERE id = $1;", tid);
-        tx.commit();
-
-        for (auto it = _teachers.begin(); it != _teachers.end(); ++it) {
-            if ((*it)->hasId(tid)) {
-                _teachers.erase(it);
-                break;
+std::vector<std::shared_ptr<Teacher>> TeacherBroker::findAll() {
+    if(_teachers.empty()) {
+        try {
+            pqxx::work tx(*m_conn);
+            auto res = tx.exec("SELECT * FROM Teacher");
+            tx.commit();
+            for(auto r : res) {
+                auto t = std::make_shared<Teacher>(
+                    r["id"].as<std::string>(), r["name"].as<std::string>(),
+                    r["gender"].as<std::string>(), r["dept"].as<std::string>(),
+                    r["title"].as<std::string>()
+                );
+                _teachers.push_back(t);
             }
+        } catch(const std::exception& e) {
+            std::cerr << "初始化教师表失败：" << e.what() << std::endl;
         }
-
-        std::print("删除教师成功（ID：{}）\n", tid);
-        return true;
-    } catch (const std::exception& e) {
-        std::cerr << "删除教师失败（ID：" << tid << "）：" << e.what() << std::endl;
-        return false;
     }
-}
-bool TeacherBroker::isTeacherExistsInternal(const std::string& tid) {
-    for (const auto& tea : _teachers) {
-        if (tea->hasId(tid)) return true;
-    }
-
-    try {
-        pqxx::work tx(*m_conn);
-        auto res = tx.exec_params("SELECT 1 FROM Teacher WHERE id = $1;", tid);
-        tx.commit();
-        return !res.empty();
-    } catch (const std::exception& e) {
-        std::cerr << "检查教师存在性失败：" << e.what() << std::endl;
-        return false;
-    }
+    return _teachers;
 }

@@ -4,18 +4,15 @@ export module registrar:dm.studentbroker;
 
 import std;
 import :dm.base;
-import registrar:domian.student;
+import :domain.student;
 
 export class StudentBroker : public RelationalBroker {
 public:
     static StudentBroker& singleton();
-    std::shared_ptr<class Student> findById(const string& sid);
-    // 1. 添加学生（调用基类insert方法，直接拼接SQL）
+    std::shared_ptr<class Student> findById(string& sid);
     void createTable() override;
     void initData() override;
-    bool addStudent(std::shared_ptr<class Student>& student);
-    bool deleteStudent(const string& sid);
-    bool isStudentExists(const string& sid);
+    bool isStudentExists(string& sid);
 private:
     StudentBroker();
     StudentBroker(const StudentBroker&) = delete;
@@ -38,15 +35,21 @@ StudentBroker &StudentBroker::singleton()
 void StudentBroker::createTable()
 {
     print("创建学生表...\n");
-    string sql="CREATE TABLE IF NOT EXISTS Student("
-               "id VARCHAR(20) PRIMARY KEY,"
-               "name VARCHAR(50) NOT NULL,"
-               "gender VARCHAR(10) NOT NULL,"
-               "dept VARCHAR(40) NOT NULL,"
-               "grade VARCHAR(20) NOT NULL);";
-    query(sql);
-    print("学生表创建完成...\n");
+    std::string sql = R"(
+          CREATE TABLE IF NOT EXISTS Student (
+              id VARCHAR(20) PRIMARY KEY,
+              name VARCHAR(50) NOT NULL,
+              gender VARCHAR(10) NOT NULL,
+              dept VARCHAR(40) NOT NULL,
+              grade INT NOT NULL,            -- 对应 m_grade (int)
+              major VARCHAR(50) NOT NULL,    -- 对应 m_major
+              studentclass VARCHAR(50) NOT NULL, -- 对应 m_studentclass
+              creditlimit DOUBLE PRECISION NOT NULL -- 对应 m_creditLimit
+          )
+      )";
+      query(sql);
 }
+
 
 void StudentBroker::initData()
 {
@@ -56,106 +59,72 @@ void StudentBroker::initData()
 
     print("插入初始化数据...\n");
     vector<Student> teststudents = {
-            {"2018001","李勇","男","信息安全","2018"},
-            {"2018002","刘晨","女","计算机科学与技术","2018"},
-            {"2018003","王敏","女","计算机科学与技术","2018"},
-            {"2018004","张立","男","计算机科学与技术","2018"},
-            {"2018005","陈新齐","男","信息管理","2018"},
-            {"2018006","赵明","男","数据科学与大数据技术","2018"}
+        {"2018001", "李勇", "男", "信息安全", 2018, "信息安全", "信安1801", 20.0},
+        {"2018002", "刘晨", "女", "计算机科学与技术", 2018, "计算机科学与技术", "计科1801", 20.0},
+        {"2018003", "王敏", "女", "计算机科学与技术", 2018, "计算机科学与技术", "计科1802", 20.0},
+        {"2018004", "张立", "男", "计算机科学与技术", 2019, "计算机科学与技术", "计科1901", 20.0},
+        {"2018005", "陈新齐", "男", "信息管理", 2018, "信息管理", "信管1801", 20.0},
+        {"2018006", "赵明", "男", "数据科学与大数据技术", 2018, "数据科学", "数据1801", 20.0}
         };
-    int successCount = 0;
-    for (auto& stu : testStudents) {
-        if (addStudent(stu)) {
-            successCount++;
-        }
-    }
-    _students.clear();
-    for (auto& stu : testStudents) {
-        _students.push_back(std::make_shared<Student>(stu));
-    }
-    print("学生数据初始化完成，成功插入{} 条数据",successCount);
 
+    try {
+           pqxx::work tx(*m_conn);
+           for(auto& s : teststudents) {
+               tx.exec(
+                   "INSERT INTO Student(id, name, gender, dept, grade, major, studentclass, creditlimit) "
+                   "VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
+                   pqxx::params{s.m_id, s.m_name, s.m_gender, s.m_dept,
+                   s.m_grade, s.m_major, s.m_studentclass, s.m_creditLimit});
+            }
+           tx.commit();
+
+           // 加入内存缓存
+           for(auto& s : teststudents) {
+               _students.push_back(std::make_shared<Student>(s));
+           }
+       } catch(const std::exception& e) {
+           std::cerr << "初始化学生数据失败: " << e.what() << std::endl;
+       }
 }
 std::shared_ptr<Student> StudentBroker::findById(string& sid)
 {
-    for(auto& student:_students){
-        if(student->hasId(sid)) return student;
+    for(auto& s:_students){
+        if(s->hasId(sid)) return s;
     }
     string sql = "SELECT id, name, gender,dept, grade FROM Student WHERE id = '" + sid + "';";
     pqxx::result res = this->query(sql);
     if (res.empty()) {
-        cerr << "未找到学生：" << sid << "\n";
+        std::cerr << "未找到学生：" << sid << "\n";
         return nullptr;
     }
-    // 3. 数据库查询结果转Student对象
-    auto row = res[0];
-    auto student = std::make_shared<Student>(
-                row["id"].as<std::string>(),
-                row["name"].as<std::string>(),
-                row["gender"].as<std::string>(),
-                row["dept"].as<std::string>(),
-                row["grade"].as<std::string>()
-                );
+    try {
+        pqxx::work tx(*m_conn);
+        auto res = tx.exec("SELECT * FROM Student WHERE id=$1", pqxx::params{sid});
+        tx.commit();
 
-    // 4. 加入缓存
-    _students.push_back(student);
-    std::print("数据库查询到学生：{}\n", sid);
-    return student;
-}
-bool StudentBroker::addStudent(std::shared_ptr<class Student>& student)
-{
-    if(isStudentExists(student->m_id)){
-        print("学生已经存在，添加失败!\n");
-        return false;
-    }
-
-    std::vector<std::string> cols = {"id", "name", "gender", "dept", "grade"};
-    std::vector<std::string> vals = {
-        student->m_id,
-        student->m_name,
-        student->m_gendar,
-        student->m_dept,
-        student->m_grade
-    };
-
-    bool success = insert("Student", cols, vals);
-    if (success) {
-        _students.push_back(student); // 同步更新内存缓存
-        print("学生{}添加成功", student->m_name);
-    } else {
-        print("学生{}添加失败", student->m_name);
-    }
-    return success;
-}
-bool deleteStudent(const string& sid)
-{
-    if (!isStudentExists(sid)) {
-        print("学生{}不存在，删除失败", sid);
-        return false;
-    }
-
-    bool success = drop("Student", "id", sid);
-    if (success) {
-        for (auto it = _students.begin(); it != _students.end(); ++it) {
-            if ((*it)->hasId(sid)) {
-                _students.erase(it);
-                break;
-            }
+        if(!res.empty()) {
+            auto r = res[0];
+            // 构造函数参数: id, name, gender, dept, grade, major, studentclass, creditLimit
+            auto s = std::make_shared<Student>(
+                        r["id"].as<std::string>(),
+                        r["name"].as<std::string>(),
+                        r["gender"].as<std::string>(),
+                        r["dept"].as<std::string>(),
+                        r["grade"].as<int>(),              // int
+                        r["major"].as<std::string>(),      // string
+                        r["studentclass"].as<std::string>(), // string
+                        r["creditlimit"].as<double>()      // double
+                        );
+            _students.push_back(s);
+            return s;
         }
-        print("学生{}删除成功", sid);
-    } else {
-        print("学生{}删除失败", sid);
+    } catch(const std::exception& e) {
+        std::cerr << "查询学生失败: " << e.what() << std::endl;
     }
-    return success;
+    return nullptr;
 }
 
-bool StudentBroker::isStudentExists(const std::string& sid) {
-    for (auto& stu : _students) {
-        if (stu->hasId(sid)) {
-            return true;
-        }
-    }
-    std::string sql = std::format("SELECT * FROM Student WHERE id = '{}';",sid);
-    pqxx::result res = query(sql);
-    return !res.empty();
+
+bool StudentBroker::isStudentExists(std::string& sid) {
+  return findById(sid)!=nullptr;
 }

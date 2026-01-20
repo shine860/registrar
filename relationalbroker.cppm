@@ -5,6 +5,9 @@ export module registrar:dm.base;
 import std;
 using std::string;
 using std::print;
+using std::vector;
+using std::unique_ptr;
+using std::runtime_error;
 
 export class RelationalBroker{
 public:
@@ -12,15 +15,15 @@ public:
     RelationalBroker();
     virtual ~RelationalBroker() = default;
 
-    virtual void initConnection();
-    virtual pqxx::result query(const string& sql);
-    virtual bool insert(const string& table, const vector<string>& cols, const vector<string>& vals);
-    virtual bool drop(const string& table, const string& primary_key, const string& key_value);
+    void initConnection();
+    pqxx::result query(const string& sql);
+    // bool insert(const string& table, const vector<string>& cols, const vector<string>& vals);
+    // bool drop(const string& table, const string& primary_key, const string& key_value);
 
     virtual void createTable() = 0;
     virtual void initData() = 0;
 
-protected:
+protected://静态连接指针，全剧共享一个连接
     static unique_ptr<pqxx::connection> m_conn;
 
 };
@@ -47,7 +50,7 @@ void RelationalBroker::initConnection() {
         if (m_conn->is_open()) {
             print("连接数据库成功: {}", m_conn->dbname());
         } else {
-            throw runtime_error("数据库连接未打开");
+            throw runtime_error("数据库连接未成功");
         }
     } catch (const std::exception& e) {
         print("数据库连接失败: {}\n", e.what());
@@ -66,35 +69,4 @@ pqxx::result RelationalBroker::query(const string& sql) {
             std::cerr << "查询失败 | SQL：" << sql << "错误：" << e.what() << std::endl;
             return pqxx::result();
         }
-}
-bool RelationalBroker::insert(const string& table, const vector<string>& cols, const vector<string>& vals) {
-    if (cols.size() != vals.size()) {
-        throw runtime_error("字段数与值数不匹配");
-    }
-
-    string sql = "INSERT INTO " + table + " (";
-
-    for (size_t i = 0; i < cols.size(); ++i) {
-        sql += cols[i] + (i < cols.size()-1 ? ", " : ") VALUES (");
-    }
-
-    for (size_t i = 0; i < vals.size(); ++i) {
-        sql += "'" + vals[i] + "'" + (i < vals.size()-1 ? ", " : ") ON CONFLICT DO NOTHING;");
-    }
-
-    return query(sql).affected_rows() > 0;
-}
-bool RelationalBroker::drop(const string& table, const string& primary_key, const string& key_value) {
-    string sql = "DELETE FROM " + table + " WHERE " + primary_key + " = '" + key_value + "';";
-
-    if (!m_conn || !m_conn->is_open()) initConnection();
-    try {
-        pqxx::work tx(*m_conn);
-        pqxx::result res = tx.exec(sql);
-        tx.commit();
-        return res.affected_rows() > 0;
-    } catch (const std::exception& e) {
-        std::cerr << "删除失败 | 错误：{}" << e.what() << std::endl;
-        return false;
-    }
 }
