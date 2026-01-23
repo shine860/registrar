@@ -1,6 +1,6 @@
 // Module
 // File: ui.cppm   Version: 0.1.0   License: AGPLv3
-// Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-20 21:19:08
+// Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-24 05:10:13
 // Description:
 //
 export module registrar:ui;
@@ -17,6 +17,7 @@ import std;
 using std::string;
 using std::print;
 using std::vector;
+using std::cin;
 
 export class EnrollInUi
 {
@@ -24,16 +25,16 @@ public:
     EnrollInUi() = default;
     ~EnrollInUi() = default;
     int showMainMenu() const;
-    bool studentLogIn();
-    bool teacherLogIn();
-    bool teachingsecretaryLogIn();
+    string studentLogIn();
+    string teacherLogIn();
+    string teachingsecretaryLogIn();
     void showStudents(const vector<std::shared_ptr<Student>>& students);
 };
 
 int EnrollInUi::showMainMenu() const
 {
     int choice;
-    std::cin >> choice;
+    do{
     std::cout << "========================================\n";
     std::cout << "        学生选课管理系统 V1.0\n";
     std::cout << "========================================\n";
@@ -43,13 +44,18 @@ int EnrollInUi::showMainMenu() const
     std::cout << "0. 退出系统\n";
     std::cout << "========================================\n";
     std::cout << "请输入操作序号：";
-    while(choice < 0 || choice > 3){
-        print("输入无效！请输入0-3之间的数字。");
-        print("请重新输入: ");
+    if(!(cin >> choice)){
+        cin.clear();//清除错误标志
+        cin.ignore(10000,'\n');
+        choice = -1;//强制设为无效，触发循环
     }
+    if(choice < 0 || choice>3){
+        std::cout << "输入无效！请输入0-3之间的数字。" << std::endl;
+    }
+    }while(choice <0 || choice > 3);
     return choice;
 }
-bool EnrollInUi::studentLogIn()
+string EnrollInUi::studentLogIn()
 {
     string id, name;
     print("=== 学生登录 ===\n");
@@ -57,18 +63,17 @@ bool EnrollInUi::studentLogIn()
     std::cin >> id;
     print("请输入姓名: ");
     std::cin >> name;
-    auto& broker = StudentBroker::singleton();
-    Student* student = broker.findById(id);
+    std::shared_ptr<Student> student = StudentBroker::singleton().findById(id);
 
-    if (student && student->hasId(id)) {
+    if (student && student->hasId(id) &&student->get_name()==name ) {
         print("登录成功！欢迎，学生 {}\n", id);
-        return true;
+        return id;
     }
-    print("登录失败：学号或密码错误\n");
-    return false;
+    print("登录失败：学号或姓名错误\n");
+    return "";
 }
 
-bool EnrollInUi::teacherLogIn()
+string EnrollInUi::teacherLogIn()
 {
     string id, name;
     print("=== 教师登录 ===\n");
@@ -77,19 +82,18 @@ bool EnrollInUi::teacherLogIn()
     print("请输入姓名: ");
     cin >> name;
 
-    auto& broker = TeacherBroker::singleton();
-    Teacher* teacher = broker.findById(id);
+    std::shared_ptr<Teacher> teacher = TeacherBroker::singleton().findById(id);
 
-    if (teacher && teacher->hasId(id)) {
+    if (teacher && teacher->hasId(id)&&teacher->get_name()==name) {
         print("登录成功！欢迎，教师 {}\n", id);
-        return true;
+        return id;
     }
 
-    print("登录失败：工号或密码错误\n");
-    return false;
+    print("登录失败：学号或姓名错误错误\n");
+    return "";
 }
 
-bool EnrollInUi::teachingsecretaryLogIn()
+string EnrollInUi::teachingsecretaryLogIn()
 {
     string id, name;
     print("=== 教务登录 ===\n");
@@ -98,15 +102,14 @@ bool EnrollInUi::teachingsecretaryLogIn()
     print("请输入姓名: ");
     std::cin >> name;
 
-    auto& broker = SecretaryBroker::singleton();
-    TeachingSecretary* secretary = broker.findById(id);
+   std::shared_ptr<TeachingSecretary> secretary =TeachingSecretaryBroker::singleton().findById(id);
 
-    if (secretary && secretary->hasId(id)) {
+    if (secretary && secretary->hasId(id) && secretary->get_name()==name) {
         print("登录成功！欢迎，教务 {}\n", id);
-        return true;
+        return id;
     }
 
-    print("登录失败：工号或密码错误\n");
-    return false;
+    print("登录失败：工号或姓名错误\n");
+    return "";
 }
 
