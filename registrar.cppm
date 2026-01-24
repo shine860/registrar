@@ -1,6 +1,6 @@
 // Module
 // File: registrar.cppm   Version: 0.1.0   License: AGPLv3
-// Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-24 05:09:04
+// Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-24 20:20:52
 // Description:
 //
 export module registrar;
@@ -20,9 +20,8 @@ using std::vector;
 using std::ctime;
 using std::time_t;
 using std::time;
-// ==========================================
+
 // 控制层 Registrar 实现
-// ==========================================
 
 export class Registrar {
 private:
@@ -44,18 +43,24 @@ Registrar::Registrar() {
 
 void Registrar::initData() {
     std::cout << "正在初始化数据..." << std::endl;
-    StudentBroker::singleton().createTable();
-    StudentBroker::singleton().initData();
-    CourseBroker::singleton().createTable();
-    CourseBroker::singleton().initData();
-    TeacherBroker::singleton().createTable();
-    TeacherBroker::singleton().initData();
-    TeachingSecretaryBroker::singleton().createTable();
-    TeachingSecretaryBroker::singleton().initData();
-    ClassroomBroker::singleton().createTable();
-    ClassroomBroker::singleton().initData();
-    EnrollmentBroker::singleton().createTable();
-    EnrollmentBroker::singleton().initData();
+    auto& stu = StudentBroker::singleton();
+    auto& cou = CourseBroker::singleton();
+    auto& tea = TeacherBroker::singleton();
+    auto& sec = TeachingSecretaryBroker::singleton();
+    auto& room = ClassroomBroker::singleton();
+    auto& enroll = EnrollmentBroker::singleton();
+    stu.createTable();
+    stu.initData();
+    cou.createTable();
+    cou.initData();
+    tea.createTable();
+    tea.initData();
+    sec.createTable();
+    sec.initData();
+    room.createTable();
+    room.initData();
+    enroll.createTable();
+    enroll.initData();
 }
 
 int Registrar::exec()
@@ -108,36 +113,26 @@ void Registrar::handleStudentModule(string& studentId) {
 
         switch (ch1) {
             case 1: { // 选课
-            auto& cb = CourseBroker::singleton();
-                         auto allCourses = cb.findAll();
+                auto& cb = CourseBroker::singleton();
+                auto allCourses = cb.findAll();
 
-                         // 2. 打印课程列表
-                         cout << "\n======= 所有课程列表 =======\n";
-                         if (allCourses.empty()) {
-                             cout << "暂无课程可选！" << endl;
-                             break;
-                         }
-
-
-                         int index = 1;
-                         for (const auto& c : allCourses) {
-                             cout << "  " << index
-                                  << c->m_courseId
-                                  << c->m_coursename
-                                  << c->m_credit
-                                  << c->m_syllabus
-                                  // << (c->m_teacherId.empty() ? "未分配" : c->m_teacherId) <<
-                                  <<endl;
-                             index++;
-                         }
-                         cout << "----------------------------------------\n";
-
+                // 打印课程列表
+                cout << "\n======= 所有课程列表 =======\n";
+                if (allCourses.empty()) {
+                    cout << "暂无课程可选！" << endl;
+                    break;
+                }
+                for (const auto& c : allCourses) {
+                    print("{}\n",c->Info());
+                }
+                cout << "----------------------------------------\n";
                 string cid;
                 cout << "请输入课程ID：";
                 cin >> cid;
                 time_t now = time(0);
                 char* tStr = ctime(&now);
                 string timeStrCpp(tStr);
+                //将最后的换行符删掉
                 if (!timeStrCpp.empty() && timeStrCpp.back() == '\n') timeStrCpp.pop_back();
 
                 if (eb.enroll(studentId, cid, timeStrCpp)) {
@@ -201,7 +196,7 @@ void Registrar::handleStudentModule(string& studentId) {
                             scoreStr = std::to_string(sc);
                         }
 
-                        cout << "课程: " << courseName << " | 成绩: " << scoreStr << endl;
+                        cout << "课程: " << courseName << "  成绩: " << scoreStr << endl;
                         hasScore = true;
                     }
                 } else {
@@ -209,7 +204,7 @@ void Registrar::handleStudentModule(string& studentId) {
                 }
 
                 if (!hasScore && sb.isStudentExists(studentId)) {
-                    cout << "暂无选课记录。" << endl;
+                    cout << "暂无选课记录" << endl;
                 }
 
                 cout << "按任意键继续...";
@@ -243,73 +238,37 @@ void Registrar::handleTeacherModule(const string& teacherId) {
 
         switch (ch1) {
             case 1: { // 查看课程学生表
-                // string cid;
-                // cout << "请输入要查询的课程ID：";
-                // cin >> cid;
-
-                // auto c = cb.findById(cid);
-
-                // // 权限检查
-                // if (!c || c->m_teacherId.empty()) {
-                //     cout << ">> 错误：课程不存在或未分配教师！" << endl;
-                // } else if (c->m_teacherId != teacherId) {
-                //     cout << ">> 权限拒绝：您不是该课程的主讲教师！" << endl;
-                //     cout << ">> 现任教师ID: " << c->m_teacherId << endl;
-                // } else {
-                // // if(!c){
-                //     cout << "\n======= 课程 " << cid << " 选课学生名单 =======\n";
-                //     auto studentIds = eb.getStudentIdsByCourse(cid);
-                //     if (studentIds.empty()) {
-                //         cout << "暂无学生选课" << endl;
-                //     } else {
-                //         for (const auto& sid : studentIds) {
-                //             auto s = sb.findById(sid);
-                //             if (s) {
-                //                 cout << "学生ID：" << s->get_id() << " | 姓名：" << s->get_name() << endl;
-                //             }
-                //         }
-                //     }
-                //     cout << "=============================" << endl;
-                // }
-                // cout << "按任意键继续...";
-                // cin.ignore();
-                // cin.get();
-                // break;
                 string cid;
-                                cout << "请输入要查询的课程ID：";
-                                cin >> cid;
+                cout << "请输入要查询的课程ID：";
+                cin >> cid;
+                auto c = cb.findById(cid);
 
-                                auto c = cb.findById(cid);
+                // 权限检查
+                if (!c || c->m_teacherId.empty()) {
+                    cout << "错误：课程不存在或未分配教师！" << endl;
+                } else if (c->m_teacherId != teacherId) {
+                    cout << "  权限拒绝：您不是该课程的主讲教师！" << endl;
+                    cout << "  现任教师ID: " << c->m_teacherId << endl;
+                } else {
+                    cout << "\n======= 课程 " << cid << " 选课学生名单 =======\n";
+                    auto studentIds = eb.getStudentIdsByCourse(cid);
+                    if (studentIds.empty()) {
+                        cout << "暂无学生选课" << endl;
+                    } else {
+                        for (const auto& sid : studentIds) {
+                            auto s = sb.findById(sid);
+                            if (s) {
+                                cout << "学生ID：" << s->get_id() << " | 姓名：" << s->get_name() << endl;
+                            }
+                        }
+                    }
+                    cout << "=============================" << endl;
+                }
+                cout << "按任意键继续...";
+                cin.ignore();
+                cin.get();
+                break;
 
-                                // 权限检查 (你原来的逻辑，完全保留)
-                                if (!c || c->m_teacherId.empty()) {
-                                    cout << ">> 错误：课程不存在或未分配教师！" << endl;
-                                    cout << "   (提示：数据库中该课程的 teacher_id 可能是空的)" << endl;
-                                } else if (c->m_teacherId != teacherId) {
-                                    cout << ">> 权限拒绝：您不是该课程的主讲教师！" << endl;
-                                    cout << ">> 课程 " << cid << " 的现任教师ID是: " << c->m_teacherId << endl;
-                                    cout << ">> 而您的登录ID是: " << teacherId << endl;
-                                    cout << ">> (说明：Course 表和 CourseClass 表的数据可能不一致，建议重建教学班)" << endl;
-                                } else {
-                                // if(!c){ // 把这个多余的 if 注释掉或删掉
-                                    cout << "\n======= 课程 " << cid << " 选课学生名单 =======\n";
-                                    auto studentIds = eb.getStudentIdsByCourse(cid);
-                                    if (studentIds.empty()) {
-                                        cout << "暂无学生选课" << endl;
-                                    } else {
-                                        for (const auto& sid : studentIds) {
-                                            auto s = sb.findById(sid);
-                                            if (s) {
-                                                cout << "学生ID：" << s->get_id() << " | 姓名：" << s->get_name() << endl;
-                                            }
-                                        }
-                                    }
-                                    cout << "=============================" << endl;
-                                }
-                                cout << "按任意键继续...";
-                                cin.ignore();
-                                cin.get();
-                                break;
             }
             case 2: { // 给学生打分
                 string cid, sid;
@@ -333,20 +292,10 @@ void Registrar::handleTeacherModule(const string& teacherId) {
 
                 double totalScore = mid * 0.4+fin*0.4+0.2*hwAvg/hwCount;
                 auto c = cb.findById(cid);
-
-                // 权限检查
-                // if (!c || c->m_teacherId.empty()) {
-                //     cout << ">> 错误：课程不存在或未分配教师！" << endl;
-               // } else if (c->m_teacherId != teacherId) {
-                    // cout << ">> 权限拒绝：您无权给该课程打分！" << endl;
-                // } else {
-                if(!c){
+                if(c){
                     if (mid < 0 || mid > 100 || fin < 0 || fin > 100|| hwAvg<0 || hwAvg>100) {
                         cout << "成绩需在 0-100之间！" << endl;
                     } else {
-                        // 调用 updateScore，这里暂时不需要 hws，因为你只输入了 mid/fin
-                        // 如果你想输入作业，需要把这里的输入逻辑改成 vector
-                        // 为了代码能跑，我这里假设只有期中期末，并按 2:8 算
                         if (eb.updateScore(sid, cid, totalScore)) {
                             cout << ">> 成绩录入成功！" << endl;
                         } else {
@@ -358,14 +307,13 @@ void Registrar::handleTeacherModule(const string& teacherId) {
             }
             case 3: { // 查看我所教授的课程
             cout << "\n======= 您负责的课程 =======\n";
-                bool found = false;
+            bool found = false;
 
-                // 【修改1】SQL 修改：使用 JOIN 关联 CourseClass 和 Course 表
-                // cc = CourseClass (教学班表), c = Course (课程表)
-                string sql = "SELECT c.id, c.name, c.credit, cc.student_class "
-                             "FROM CourseClass cc "
-                             "JOIN Course c ON cc.course_id = c.id " // 关键：通过课程ID把两张表连起来
-                             "WHERE cc.teacher_id = '" + teacherId + "'";
+            // cc = CourseClass (教学班表), c = Course (课程表)
+            string sql = "SELECT c.id, c.name, c.credit, cc.student_class "
+                        "FROM CourseClass cc "
+                        "JOIN Course c ON cc.course_id = c.id " //通过课程ID把两张表连起来
+                        "WHERE cc.teacher_id = '" + teacherId + "'";
 
                 try {
                     // 执行查询
@@ -374,19 +322,18 @@ void Registrar::handleTeacherModule(const string& teacherId) {
                     if (res.empty()) {
                         cout << "您暂未分配任何课程。" << endl;
                     } else {
-                        // 【修改2】循环内修改：读取正确的列名
+                        // 循环内修改：读取正确的列名
                         for (const auto& r : res) {
                             // 注意：这里读取的列名必须和上面 SELECT 后面的列名完全对应
                             cout << "课程ID: " << r["id"].as<std::string>()
-                                 << " | 课程名: " << r["name"].as<std::string>()
-                                 << " | 学分: " << r["credit"].as<double>()
-                                 << " | 教学班: " << r["student_class"].as<std::string>()
+                                 << "    课程名: " << r["name"].as<std::string>()
+                                 << "    学分: " << r["credit"].as<double>()
+                                 << "    教学班: " << r["student_class"].as<std::string>()
                                  << endl;
                             found = true;
                         }
                     }
                 } catch (const std::exception& e) {
-                    // 加上异常捕获，防止因为 SQL 写错导致程序闪退
                     std::cerr << "查询出错: " << e.what() << endl;
                 }
 
@@ -426,14 +373,14 @@ void Registrar::handleSecretaryModule(const string& secretaryId)
 
         switch (ch1) {
             case 1: { // 添加教师
-                string id, n, g, d, t;
-                cout << "ID Name Gen Dept Title: ";
-                cin >> id >> n >> g >> d >> t;
+                string id, name, gender, dept, title;
+                cout << "ID   Name   Gen   Dept   Title: ";
+                cin >> id >> name >> gender >> dept >> title;
 
-                Teacher teacher(id, n, g, d, t);
+                Teacher teacher(id, name, gender, dept, title);
 
                 if (sec.addTeacher(teacher)) {
-                    cout << "教师 " << n << " 添加成功！" << endl;
+                    cout << "教师 " << name << " 添加成功！" << endl;
                 } else {
                     cout << "教师ID " << id << " 已存在，添加失败！" << endl;
                 }
@@ -441,9 +388,12 @@ void Registrar::handleSecretaryModule(const string& secretaryId)
             }
             case 2: { // 建立教学班
                 string cid, tid, sClass;
-                cout << "请输入课程ID: "; cin >> cid;
-                cout << "请输入教师ID: "; cin >> tid;
-                cout << "请输入教学班级 (如 计科1801): "; cin >> sClass;
+                cout << "请输入课程ID: ";
+                cin >> cid;
+                cout << "请输入教师ID: ";
+                cin >> tid;
+                cout << "请输入教学班级 (如 计科1801): ";
+                cin >> sClass;
 
                 auto c = courseBroker.findById(cid);
                 auto te = teacherBroker.findById(tid);
@@ -453,28 +403,28 @@ void Registrar::handleSecretaryModule(const string& secretaryId)
                 } else {
                     string classId = cid + "-" + sClass;
                     if (sec.createCourseClass(cid, tid, sClass, classId)) {
-                        cout << ">> 分配成功！教学班ID: " << classId << endl;
+                        cout << " 分配成功！教学班ID: " << classId << endl;
                     } else {
-                        cout << ">> 分配失败（可能已存在）！" << endl;
+                        cout << " 分配失败（可能已存在）！" << endl;
                     }
                 }
                 break;
             }
             case 3: { // 添加课程
-                string id, n, m, s, tid;
+                string id, name, major, syllubus, tid;
                 int gr;
                 double cr;
                 cout << "ID Name Maj Gra Cre Syl TID: ";
-                cin >> id >> n >> m >> gr >> cr >> s >> tid;
+                cin >> id >> name >> major >> gr >> cr >> syllubus >> tid;
 
-                Course c(id, n, m, gr, cr, s);
-                c.setTeacherId(tid);
+                Course c(id, name, major, gr, cr, syllubus);
+                c.assignTeacherId(tid);
 
                 if (courseBroker.isCourseExists(id)) {
                     cout << "课程ID " << id << " 已存在，添加失败！" << endl;
                 } else {
                     if (sec.addCourse(c)) {
-                        cout << "课程 " << n << " 添加成功！" << endl;
+                        cout << "课程 " << name << " 添加成功！" << endl;
                     } else {
                         cout << "课程添加失败！" << endl;
                     }
@@ -482,23 +432,38 @@ void Registrar::handleSecretaryModule(const string& secretaryId)
                 break;
             }
             case 4: { // 智能排课
+                cout << "\n======= 当前可用教室列表 =======\n";
+                auto classrooms = ClassroomBroker::singleton().findAll();
+                if (classrooms.empty()) {
+                    cout << "暂无教室数据，无法排课。" << endl;
+                    cout << "按任意键继续...";
+                    cin.ignore();
+                    cin.get();
+                    break; // 没教室就退出
+                }
+                for (const auto& r : classrooms) {
+                    cout << "教室ID: " << r->m_roomNum
+                        << "   楼宇: " << r->m_building
+                        << "   容量: " << r->m_capacity << endl;
+                }
+                cout << "==================================\n";
                 string cid, rid,tid, t;
-                cout << "CID RID TID Time: ";
+                cout << "courseId roomID teacherID Time: ";
                 cin >> cid >> rid >>tid >> t;
 
                 auto c = courseBroker.findById(cid);
                 auto r = classroomBroker.findById(rid);
-                auto te = teacherBroker.findById(t);
+                auto te = teacherBroker.findById(tid);
 
                 if (!c || !r || !te) {
                     cout << "排课失败：资源（课程/教室/教师）不存在！" << endl;
-                break;
+                    break;
                 }
 
                 // 清理缓冲区，防止残留字符导致死循环
                 cin.ignore(10000, '\n');
-
-                if (TeachingSecretaryBroker::singleton().arrangement(c->m_courseId, r->m_roomNum, te->get_id(), t)) {
+                auto& tea = TeachingSecretaryBroker::singleton();
+                if (tea.arrangement(c->m_courseId, r->m_roomNum, te->get_id(), t)) {
                     cout << "排课成功！" << endl;
                 } else {
                     cout << "排课失败（冲突或资源不存在）！" << endl;

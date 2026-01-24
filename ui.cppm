@@ -1,6 +1,6 @@
 // Module
 // File: ui.cppm   Version: 0.1.0   License: AGPLv3
-// Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-24 05:10:13
+// Created: 张雨欣2024051604045   3357714096@qq.com   2026-01-24 20:21:58
 // Description:
 //
 export module registrar:ui;
@@ -47,7 +47,6 @@ int EnrollInUi::showMainMenu() const
     if(!(cin >> choice)){
         cin.clear();//清除错误标志
         cin.ignore(10000,'\n');
-        choice = -1;//强制设为无效，触发循环
     }
     if(choice < 0 || choice>3){
         std::cout << "输入无效！请输入0-3之间的数字。" << std::endl;
@@ -55,6 +54,8 @@ int EnrollInUi::showMainMenu() const
     }while(choice <0 || choice > 3);
     return choice;
 }
+
+// 身份验证返回id
 string EnrollInUi::studentLogIn()
 {
     string id, name;
