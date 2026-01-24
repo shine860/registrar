@@ -1,3 +1,7 @@
+// Module
+// File: relationalbroker.cppm   Version: 0.1.0   License: AGPLv3
+// Created: 苏茜（2024051604029）   3236863614@qq.com   2026-01-24 21:34:28
+// Description:所有broker的基类，设计数据库的连接操作和查询
 module;
 #include "pqxx/pqxx"
 export module registrar:dm.base;
@@ -17,12 +21,8 @@ public:
 
     void initConnection();
     pqxx::result query(const string& sql);
-    // bool insert(const string& table, const vector<string>& cols, const vector<string>& vals);
-    // bool drop(const string& table, const string& primary_key, const string& key_value);
-
     virtual void createTable() = 0;
     virtual void initData() = 0;
-
 protected://静态连接指针，全剧共享一个连接
     static unique_ptr<pqxx::connection> m_conn;
 
@@ -31,7 +31,7 @@ protected://静态连接指针，全剧共享一个连接
 unique_ptr<pqxx::connection> RelationalBroker::m_conn = nullptr;
 
 RelationalBroker::RelationalBroker() {}
-
+//与数据库创建连接
 void RelationalBroker::initConnection() {
     if (m_conn && m_conn->is_open()) {
         print("数据库连接已初始化\n");

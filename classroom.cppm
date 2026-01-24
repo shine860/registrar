@@ -9,13 +9,14 @@ using std::string;
 using std::vector;
 
 class Course;
-// class ClassroomBroker;
+
 class TeachingSecretary;
 export class Classroom
 {
 friend class ClassroomBroker;
 friend class TeachingSecretary;
-protected:
+friend class Registrar;
+private:
     string m_roomNum;//教室编号
     string m_building;//教学楼名称
     int m_capacity;//容量
@@ -28,7 +29,7 @@ public:
     bool releaseClassroom();
     void showClassroomInfo();
     bool removeCourseFromSchedule(Course* course);
-    void setAvailable(bool isAvailable);
+    void updateAvailable(bool isAvailable);
     bool hasId(string id);
 };
 
@@ -67,7 +68,7 @@ bool Classroom::removeCourseFromSchedule(Course* course)
     print("错误：教室{}的排课表中没有找到该课程！\n",m_roomNum);
     return false;
 }
-void Classroom::setAvailable(bool isAvailable) {
+void Classroom::updateAvailable(bool isAvailable) {
     this->m_isOccupied = !isAvailable;
 }
  bool Classroom::hasId(string id)

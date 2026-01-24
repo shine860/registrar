@@ -13,7 +13,6 @@ add_executable(registrar
     #math.cpp                              # 模块实现单元
     main.cpp
 
-
 )
 
 set(CONTROL_FILES
@@ -76,7 +75,7 @@ target_link_libraries(registrar PRIVATE
     pq
 )
 
-
+# install(TARGETS registrar RUNTIME  DESTINATION /opt/bin)
 
 
 

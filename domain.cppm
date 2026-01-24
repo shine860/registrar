@@ -8,6 +8,7 @@ export import :domain.enrollment;
 export import :domain.grade;
 export import :domain.person;
 export import :domain.teachingsecretary;
+import std;
 //选课类循环依赖
 bool Enrollment::hasTId(string sid, string cid)
 {

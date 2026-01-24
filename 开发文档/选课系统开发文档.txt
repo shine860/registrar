@@ -1,0 +1,136 @@
+项目名称：基于c++和postgresql数据库的选课系统registrar
+开发环境：linux,Qt creator
+开发者：苏茜（主要负责数据库管理层），刘城（主要负责领域层的交互和实现），张雨欣（主要控制层和ui层）
+一.目录结构：
+registrar
+│
+├── CMakeLists.txt
+————|————control          |//控制层
+│   ├ registrar.cppm
+│   |
+│   │
+│   ├── dm/                         // 数据管理层
+│   │   ├── dm.base.cppm            // 基类，包含数据库连接管理
+│   │   ├── dm.studentbroker.cppm   // 学生数据代理
+│   │   ├── dm.teacherbroker.cppm   // 教师数据代理
+│   │   ├── dm.coursebroker.cppm    // 课程数据代理
+│   │   ├── dm.teachsecretarybroker.cppm // 教学秘书数据代理
+│   │   ├── dm.classroombroker.cppm  // 教室数据代理
+│   │   └── dm.enrollmentbroker.cppm // 选课记录数据代理
+│   │
+│   ├── domain/                     // 领域层 (实体对象)
+│   │   ├── domain.student.cppm
+│   │   ├── domain.teacher.cppm
+│   │   ├── domain.course.cppm
+│   │   ├── domain.teachingsecretary.cppm
+│   │   ├── domain.classroom.cppm
+│   │   |── domain.enrollment.cppm
+│   │   |_domain.grade.cppm
+│   └── ui/                         // 表现层
+│       └── ui.cppm                 // 终端界面交互逻辑
+
+二.系统架构设计
+1，按照四层分层架构设计的：
+    （1）表现层：负责终端界面的输入输出的菜单展示，与用户交互
+    （2）控制层：负责系统的整体流程，如登陆分发，菜单循环等控制
+    （3）领域层：包含所有的实体类，比如教师，学生，教学秘书，教室等等。
+    （4）数据管理层：负责与Postgresql数据库交互，使用代管者模式管理数据持久化。
+2.关键类设计
+    因为main函数中直接返回registrar里面的exec函数，所以registrar控制类是很重要的。
+    由于要处理三个模块，所以又分了三个模块，即专门处理学生模块。处理教师模块以及处理教学秘书模块。还有初始化所有数据表和基础数据。
+三.核心功能实现
+1.学生模块：
+    具有选课和退课功能，以及查看自己的课程表和课程的分数。
+    先修课逻辑：检查选课时，如果没有选课程对应的先修课，那就不可以选这门课，会进行提示和报错。
+2.教师模块：
+    具有查看自己教授的课程，查看教授课程对应的学生名单，给对应学生打分。
+    打分这个模块我采用了期中，期末，平时作业成绩一起算，但是作业数是由老师来决定的。
+    数据精度是通过NUMERIC(5, 2) 存储成绩，确保显示两位小数。（ 只有课程的 teacher_id 与登录教师 ID 一致时，才能录入成绩。）
+3.教学秘书模块：教学秘书可以增加教师和课程，也可以进行排课，分配教师，教室和时间段进行排课。
+            当产生冲突的时候也要报错。提醒产生冲突，无法正常排课。
+四.数据库设计
+    Student: 学生信息表
+    Teacher: 教师信息表
+    secretary：教学秘书信息表
+    Course: 课程信息表
+    Enrollment: 选课记录表
+    CourseClass: 教学班表
+    CourseSchedule: 排课表
+    classroom:教室表
+五.遇到的问题与解决方案
+1.用教师身份登陆查询学生的时候，不同的教师查询相应的课程时，都可以找到这个学生，这是矛盾的：
+    解决方案：创建另一个表格，当教学秘书分配之后，老师受到相应的信息，这时候只有对应老师可以查询对应课程的学生，不是对应的老师是查询不到的;
+2.教师端查询不到分配的课程：
+    原因: CourseClass 表更新了，但 Course 表的 teacher_id 没有同步更新，导致权限校验失败。
+    解决: 在 TeachingSecretaryBroker::createCourseClass 中增加了update语句。
+3. 录入成绩后，学生端显示小数位数过多。
+    原因: std::to_string 默认保留 6 位小数。
+    解决: 修改数据库字段类型为 NUMERIC(5, 2).
+4.最开始的成绩录入只有期末成绩和期中成绩，但是实际上应该还有作业成绩：
+    解决方案，加参数，让老师自己输入需要输入多少个而家庭作业成绩，然后进行计算平均数。
+    最后修改函数更新成绩的比例就可以。
+六.交互模型
+交互模型描述系统边界（终端 UI）与内部逻辑控制器及数据库之间的信息流动。本系统采用分层交互模式。
+1.登录交互流程
+    参与者：学生/教师/教务秘书
+    交互步骤：
+    输入：用户在终端选择角色序号（1/2/3）。
+    边界 (UI)：EnrollInUi 调用 LogIn 方法，获取用户输入 ID。
+    控制层：Registrar 接收 ID。
+    数据层：StudentBroker/TeacherBroker 调用 findById(id) 查询数据库。
+    反馈：
+        若存在：返回用户对象，Registrar 调用对应的 handle...Module 进入子菜单。
+        若不存在：UI 显示“用户不存在”，返回主菜单。
+
+2.学生选课交互
+    参与者：学生
+    前置条件：学生已成功登录。
+    交互步骤：
+    请求：学生输入“选课”指令（1）及课程 ID（如 1001）。
+    边界：Registrar.handleStudentModule 将 ID 传递给 EnrollmentBroker。
+    内部逻辑交互：
+        EnrollmentBroker 向 CourseBroker 发起查询：课程 1001 是否存在？
+        EnrollmentBroker 向 Enrollment 表发起查询：学生是否已选 1001？
+        EnrollmentBroker 向 CoursePrerequisite 表发起查询：1001 的先修课有哪些？
+        EnrollmentBroker 向 Enrollment 表发起查询：学生是否修完那些先修课？
+        决策：
+             若任一检查失败 -> 边界输出“选课失败（冲突/无先修课）”。
+             若全部通过则将数据添加进入选课系统。
+        响应：边界输出“选课成功”。
+
+3 教学秘书排课交互流程
+     参与者：教学秘书
+     交互步骤：
+        请求：输入排课参数 (课程ID 1001, 教室ID A101, 教师ID 2001, 时间 周一1-2节)。
+        控制层：Registrar.handleSecretaryModule 将参数传递给 TeachingSecretarBroker.arrangement()。
+        内部逻辑交互：
+             TeachingSecretarBroker 向 ClassroomBroker 发送查询：A101 在 周一1-2节 是否空闲？
+             TeachingSecretarBroker 向 TeacherBroker (或内部逻辑) 发送查询：2001 在 周一1-2节 是否忙碌？
+
+        决策：
+             若有冲突 -> 边界输出“冲突”，流程终止。
+             若无冲突 -> 则正常插入删除数据
+
+        响应：边界输出“排课成功”。
+4.教师查看课程学生名单交互流程
+     参与者：教师
+     交互步骤：
+        请求：教师选择“1. 查看课程学生表”，并输入目标课程 ID（如 1001）。
+        边界：Registrar 调用 CourseBroker.findById(1001) 获取课程对象。
+        权限验证交互：
+             Registrar 检查课程对象的 m_teacherId 属性。
+             判断：若 m_teacherId 为空或不等于当前登录 ID，交互终止
+             判断：若 m_teacherId 等于当前登录 ID，通过验证，继续下一步。
+        数据查询交互：
+             Registrar 调用 EnrollmentBroker.getStudentIdsByCourse(1001)。
+             EnrollmentBroker 向数据库查询：SELECT student_id FROM Enrollment WHERE course_id = '1001'。
+             数据库返回选了该课的所有学生 ID 列表。
+        信息补全：
+             Registrar 遍历学生 ID 列表。
+             对每个 ID，调用 StudentBroker.findById(id) 获取学生姓名。
+
+其他功能的交互同上差别不大。
+
+
+
+

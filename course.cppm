@@ -16,6 +16,8 @@ export class Course
 {
 friend class CourseBroker;
 friend class TeachingSecretaryBroker;
+friend class ClassroomBroker;
+friend class Registrar;
 private:
     string m_courseId;//课程号
     string m_coursename;//课程名字
@@ -36,7 +38,8 @@ public:
     string Info();
     bool hasId(string id);
     void addPrerequisiteId(const std::string& pid);
-    void setTeacherId(const string& tid);
+    bool assignTeacherId(const std::string& tid);
+    // void setTeacherId(const string& tid);
 };
 
 Course::Course(string id,string name, string major,int grade,double credit,string syllabus)
@@ -53,6 +56,10 @@ bool Course::acceptEnrollment(Student *student){
     return false;
 }
 
+bool Course::assignTeacherId(const std::string& tid) {
+       this->m_teacherId = tid;
+       return true;
+}
 bool Course::assignTeacher(class Teacher* teacher)
 {
     if(!teacher){
@@ -66,7 +73,7 @@ bool Course::assignTeacher(class Teacher* teacher)
 
 string Course::Info()
 {
-    return std::format("课程：{}    {}  {} \n",m_courseId,m_coursename,m_credit);
+    return std::format("课程：{}    {}    {}     {} \n",m_courseId,m_coursename,m_credit,m_syllabus);
 }
 
 bool Course::hasId(string id){
@@ -75,6 +82,6 @@ bool Course::hasId(string id){
 void Course::addPrerequisiteId(const std::string& pid) {
        _prerequisiteIds.push_back(pid);
 }
-void Course::setTeacherId(const string& tid) {
-       m_teacherId = tid;
-   }
+// void Course::setTeacherId(const string& tid) {
+//        m_teacherId = tid;
+// }

@@ -20,6 +20,7 @@ class Course; // 前向声明
 
 export class Student : public Person {
 friend class StudentBroker;
+friend class Registrar;
 private:
     int m_grade;
     std::string m_major;
@@ -38,5 +39,5 @@ public:
 
 Student::Student(std::string id, std::string name, std::string gender, std::string dept,
                  int grade, std::string major, std::string studentclass, double creditLimit)
-    : Person(std::move(id), std::move(name), std::move(gender), std::move(dept)),
-      m_grade(grade), m_major(std::move(major)), m_studentclass(std::move(studentclass)), m_creditLimit(creditLimit) {}
+    : Person(id,name,gender,dept),
+      m_grade(grade), m_major(major), m_studentclass(studentclass), m_creditLimit(creditLimit) {}

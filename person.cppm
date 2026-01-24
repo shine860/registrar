@@ -9,12 +9,13 @@ using std::string;
 
 export class Person
 {
-friend class SecretaryBroker;
 public:
     Person(string id, string name, string gender,string dept);
     virtual ~Person() = default;
     string Info() const;
     bool hasId(string searchId);
+    string get_id();
+    string get_name();
 protected:
     string m_id;//学号，工号
     string m_name; //姓名
@@ -33,4 +34,13 @@ string Person::Info() const
 bool Person::hasId(string searchId)
 {
     return  searchId == this->m_id;
+}
+
+string Person::get_id()
+{
+    return m_id;
+}
+string Person::get_name()
+{
+    return m_name;
 }

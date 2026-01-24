@@ -1,14 +1,16 @@
+// Module
+// File: classroombroker.cppm   Version: 0.1.0   License: AGPLv3
+// Created: 苏茜（2024051604029）   3236863614@qq.com   2026-01-24 21:32:34
+// Description:教室实体的代管者，继承基类
+//
 module;
-#include <pqxx/pqxx>
-#include <iostream>
-#include <memory>
-#include <vector>
-#include <stdexcept>
+#include "pqxx/pqxx"
 
 export module registrar:dm.classroombroker;
 
 import :dm.base;
 import :domain.classroom;
+import std;
 
 export class ClassroomBroker : public RelationalBroker {
 public:
@@ -17,15 +19,18 @@ public:
     void initData() override;
 
     std::shared_ptr<Classroom> findById(const std::string& rid);
+    //判断教室是否存在
     bool isClassroomExists(const std::string& rid) const;
 
     bool addClassroom(const Classroom& classroom);
-    bool updateClassroomStatus(const std::string& rid, bool isAvailable);
+    bool deleteClassroom(const std::string& rid);
 
+    bool updateClassroomStatus(const std::string& rid, bool isAvailable);
+    //提供给排课使用的查询接口
     std::vector<std::shared_ptr<Classroom>> findAll();
 
-    bool deleteClassroom(const std::string& rid);
-    bool addCourseToSchedule(const std::string& rid, const std::string& cid, const std::string& time);
+    //检查教室是否在特定时间段空闲
+    bool isRoomAvailable(const std::string& rid, const std::string& timeSlot);
 private:
     ClassroomBroker();
     ClassroomBroker(const ClassroomBroker&) = delete;
@@ -33,14 +38,18 @@ private:
 
     std::vector<std::shared_ptr<Classroom>> _classrooms;
 };
-
-ClassroomBroker::ClassroomBroker() { initConnection(); }
-
-ClassroomBroker& ClassroomBroker::singleton() {
+//构造函数
+ClassroomBroker::ClassroomBroker()
+{
+    initConnection();
+}
+//创建单例
+ClassroomBroker& ClassroomBroker::singleton()
+{
     static ClassroomBroker instance;
     return instance;
 }
-
+//创建数据表
 void ClassroomBroker::createTable() {
 
     std::string sql = R"(
@@ -50,18 +59,13 @@ void ClassroomBroker::createTable() {
             capacity INT NOT NULL,
             is_available BOOLEAN DEFAULT TRUE
         );
-        CREATE TABLE IF NOT EXISTS ClassroomSchedule (
-            classroom_id VARCHAR(20) NOT NULL,
-            course_id VARCHAR(20) NOT NULL,
-            time_slot VARCHAR(50) NOT NULL,
-            PRIMARY KEY(classroom_id, time_slot)
-        )
     )";
     query(sql);
 }
 
+//初始化数据表中的数据
 void ClassroomBroker::initData() {
-    query("DELETE FROM ClassroomSchedule; DELETE FROM Classroom;");
+    // query("DELETE FROM Classroom;");//如果需要删除数据就取消注释
     _classrooms.clear();
 
 
@@ -75,7 +79,7 @@ void ClassroomBroker::initData() {
         for(auto& c : data) {
 
             tx.exec(
-                "INSERT INTO Classroom(id, building, capacity, is_available) VALUES($1, $2, $3, TRUE)",
+                "INSERT INTO Classroom(id, building, capacity, is_available) VALUES($1, $2, $3, TRUE) ON CONFLICT(id) DO NOTHING ",
                 pqxx::params{c.m_roomNum, c.m_building, c.m_capacity}
             );
         }
@@ -84,13 +88,13 @@ void ClassroomBroker::initData() {
         for(auto& c : data) {
             _classrooms.push_back(std::make_shared<Classroom>(c));
         }
-        std::cout << "[ClassroomBroker] 教室数据初始化完成。" << std::endl;
+        std::cout << "教室数据初始化完成。" << std::endl;
     } catch(const std::exception& e) {
         std::cerr << "初始化失败: " << e.what() << std::endl;
     }
 }
 
-
+//教室是否还存在
 bool ClassroomBroker::isClassroomExists(const std::string& rid) const {
     for(auto& c : _classrooms) {
         if(c->hasId(rid)) return true;
@@ -104,7 +108,7 @@ bool ClassroomBroker::isClassroomExists(const std::string& rid) const {
         return false;
     }
 }
-
+//根据id找到对应的教室
 std::shared_ptr<Classroom> ClassroomBroker::findById(const std::string& rid) {
     for(auto& c : _classrooms) {
         if(c->hasId(rid)) return c;
@@ -121,7 +125,7 @@ std::shared_ptr<Classroom> ClassroomBroker::findById(const std::string& rid) {
                 r["building"].as<std::string>(),
                 r["capacity"].as<int>()
             );
-            c->setAvailable(r["is_available"].as<bool>());
+            c->updateAvailable(r["is_available"].as<bool>());
             _classrooms.push_back(c);
             return c;
         }
@@ -131,6 +135,7 @@ std::shared_ptr<Classroom> ClassroomBroker::findById(const std::string& rid) {
     return nullptr;
 }
 
+//添加教室
 bool ClassroomBroker::addClassroom(const Classroom& classroom) {
     if(isClassroomExists(classroom.m_roomNum)) {
         std::cerr << "教室ID " << classroom.m_roomNum << " 已存在" << std::endl;
@@ -139,10 +144,8 @@ bool ClassroomBroker::addClassroom(const Classroom& classroom) {
 
     try {
         pqxx::work tx(*m_conn);
-        tx.exec(
-            "INSERT INTO Classroom(id, building, capacity, is_available) VALUES($1, $2, $3, TRUE)",
-            pqxx::params{classroom.m_roomNum, classroom.m_building, classroom.m_capacity}
-        );
+        tx.exec("INSERT INTO Classroom(id, building, capacity, is_available) VALUES($1, $2, $3, TRUE)",
+            pqxx::params{classroom.m_roomNum, classroom.m_building, classroom.m_capacity});
         tx.commit();
         _classrooms.push_back(std::make_shared<Classroom>(classroom));
         std::cout << "教室 " << classroom.m_roomNum << " 添加成功" << std::endl;
@@ -152,7 +155,7 @@ bool ClassroomBroker::addClassroom(const Classroom& classroom) {
         return false;
     }
 }
-
+//更新教室状态
 bool ClassroomBroker::updateClassroomStatus(const std::string& rid, bool isAvailable) {
     if(!isClassroomExists(rid)) {
         std::cerr << "教室 " << rid << " 不存在" << std::endl;
@@ -161,17 +164,17 @@ bool ClassroomBroker::updateClassroomStatus(const std::string& rid, bool isAvail
 
     try {
         pqxx::work tx(*m_conn);
-        // 使用 params
-        tx.exec(
-            "UPDATE Classroom SET is_available = $1 WHERE id = $2",
-            pqxx::params{isAvailable, rid}
-        );
+        std::string sql = "UPDATE Classroom SET is_available = ";
+        sql += (isAvailable ? "TRUE" : "FALSE");
+        sql += " WHERE id = '" + rid + "'";
+
+        tx.exec(sql);
         tx.commit();
 
         // 更新缓存
         for(auto& c : _classrooms) {
             if(c->hasId(rid)) {
-                c->setAvailable(isAvailable);
+                c->updateAvailable(isAvailable);
                 break;
             }
         }
@@ -181,7 +184,7 @@ bool ClassroomBroker::updateClassroomStatus(const std::string& rid, bool isAvail
         return false;
     }
 }
-
+//展示所有
 std::vector<std::shared_ptr<Classroom>> ClassroomBroker::findAll() {
     std::vector<std::shared_ptr<Classroom>> result;
     try {
@@ -189,13 +192,13 @@ std::vector<std::shared_ptr<Classroom>> ClassroomBroker::findAll() {
         auto res = tx.exec("SELECT * FROM Classroom ORDER BY id");
         tx.commit();
 
-        for(const auto& r : res) { // 使用 const auto& r 避免拷贝和引用错误
+        for(const auto& r : res) {
             auto c = std::make_shared<Classroom>(
                 r["id"].as<std::string>(),
                 r["building"].as<std::string>(),
                 r["capacity"].as<int>()
             );
-            c->setAvailable(r["is_available"].as<bool>());
+            c->updateAvailable(r["is_available"].as<bool>());
             result.push_back(c);
         }
     } catch(const std::exception& e) {
@@ -203,7 +206,7 @@ std::vector<std::shared_ptr<Classroom>> ClassroomBroker::findAll() {
     }
     return result;
 }
-
+//删除教室
 bool ClassroomBroker::deleteClassroom(const std::string& rid) {
     if(!isClassroomExists(rid)) {
         std::cerr << "教室 " << rid << " 不存在" << std::endl;
@@ -215,33 +218,26 @@ bool ClassroomBroker::deleteClassroom(const std::string& rid) {
         tx.commit();
 
         // 清理缓存
-        _classrooms.erase(
-            std::remove_if(_classrooms.begin(), _classrooms.end(), [&](const auto& c){ return c->hasId(rid); }),
-            _classrooms.end()
-        );
+        _classrooms.erase(std::remove_if(_classrooms.begin(), _classrooms.end(), [&](const auto& c){ return c->hasId(rid); }),_classrooms.end());
         return true;
     } catch(const std::exception& e) {
         std::cerr << "删除教室失败: " << e.what() << std::endl;
         return false;
     }
 }
-bool ClassroomBroker::addCourseToSchedule(const std::string& rid, const std::string& cid, const std::string& time) {
+
+//检测教室是否忙碌
+bool ClassroomBroker::isRoomAvailable(const std::string& rid, const std::string& timeSlot) {
     try {
         pqxx::work tx(*m_conn);
-
-        tx.exec(
-            "INSERT INTO ClassroomSchedule(classroom_id, course_id, time_slot) VALUES($1, $2, $3)",
-            pqxx::params{rid, cid, time}
-        );
+        // 查询：在排课表中，该教室在该时间段是否有记录
+        auto res = tx.exec("SELECT 1 FROM ClassroomSchedule WHERE classroom_id=$1 AND time_slot=$2",
+            pqxx::params{rid, timeSlot});
         tx.commit();
 
-        std::cout << "排课成功: 教室 " << rid << " 在 " << time << " 授课 " << cid << std::endl;
-        return true;
-    } catch (const pqxx::unique_violation&) {
-        std::cout << ">> 排课冲突：教室 " << rid << " 在 " << time << " 已被占用！" << std::endl;
-        return false;
-    } catch (const std::exception& e) {
-        std::cerr << "数据库错误：" << e.what() << std::endl;
+        // 如果查到了记录，说明被占用了，返回 false
+        return res.empty();
+    } catch (...) {
         return false;
     }
 }
