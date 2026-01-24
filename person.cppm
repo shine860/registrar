@@ -2,25 +2,47 @@
 // File: person.cppm
 // Created: 刘城2024051604051 3214528114@qq.com      2026-01-16
 // Version: 1.0      License: AGPLv3
-export module domain.person;
+export module registrar:domain.person;
 import std;
+using std::print;
 using std::string;
 
 export class Person
 {
-protected:
-    string m_id;
-    string m_name;
-    string m_gender;
 public:
-    Person(string id, string name, string gender);
-    string info() const;
+    Person(string id, string name, string gender,string dept);
+    virtual ~Person() = default;
+    string Info() const;
+    bool hasId(string searchId);
+    string get_id();
+    string get_name();
+protected:
+    string m_id;//学号，工号
+    string m_name; //姓名
+    string m_gender;//性别
+    string m_dept;//所在系
 };
 
-Person::Person(string id, string name, string gender)
-    : m_id(std::move(id)), m_name(std::move(name)), m_gender(std::move(gender)) {}
+Person::Person(string id, string name, string gender,string dept)
+    :m_id(id), m_name(name), m_gender(gender), m_dept(dept)
+{}
 
-string Person::info() const
+string Person::Info() const
 {
-    return "ID: " + this->m_id + ", 姓名: " + this->m_name;
+    return std::format("ID: {}, Name: {}, Gender: {},dept : {}\n", this->m_id, this->m_name, this->m_gender,this->m_dept);
+}
+
+bool Person::hasId(string searchId)
+{
+    return  searchId == this->m_id;
+}
+
+string Person::get_id()
+{
+    return m_id;
+}
+
+string Person::get_name()
+{
+    return m_name;
 }
