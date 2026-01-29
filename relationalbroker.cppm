@@ -15,7 +15,6 @@ using std::runtime_error;
 
 export class RelationalBroker{
 public:
-public:
     RelationalBroker();
     virtual ~RelationalBroker() = default;
 
